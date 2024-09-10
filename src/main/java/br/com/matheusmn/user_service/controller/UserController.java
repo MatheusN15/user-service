@@ -4,16 +4,17 @@ import br.com.matheusmn.user_service.config.security.TokenService;
 import br.com.matheusmn.user_service.domain.dto.LoginDTO;
 import br.com.matheusmn.user_service.domain.dto.LoginResponseDTO;
 import br.com.matheusmn.user_service.domain.dto.RegisterRequestDTO;
+import br.com.matheusmn.user_service.domain.entity.Reservation;
 import br.com.matheusmn.user_service.domain.entity.User;
 import br.com.matheusmn.user_service.repository.UserRepository;
+import br.com.matheusmn.user_service.service.ReservationService;
+import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/users")
@@ -23,13 +24,13 @@ public class UserController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
-
+    private final ReservationService reservationService;
 
     @PostMapping("/register")
-    public ResponseEntity<LoginResponseDTO> register(@RequestBody RegisterRequestDTO body){
+    public ResponseEntity<LoginResponseDTO> register(@RequestBody RegisterRequestDTO body) {
         Optional<User> user = userRepository.findByEmail(body.email());
 
-        if(user.isEmpty()) {
+        if (user.isEmpty()) {
             User newUser = new User();
             newUser.setPassword(passwordEncoder.encode(body.password()));
             newUser.setEmail(body.email());
@@ -44,7 +45,9 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> loginUser(@RequestBody LoginDTO request) {
-        var user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new RuntimeException("User not found"));
+        var user = userRepository
+                .findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
         if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
 
             String token = tokenService.generateToken(user);
@@ -84,5 +87,14 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
-}
 
+    @GetMapping("/reservation/{userId}")
+    public ResponseEntity<List<Reservation>> getUserReservations(@PathVariable Long userId) {
+        List<Reservation> reservations = reservationService.getUserReservations(userId);
+        if (reservations.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        } else {
+            return ResponseEntity.ok(reservations);
+        }
+    }
+}

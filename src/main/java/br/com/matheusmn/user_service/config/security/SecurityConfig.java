@@ -26,14 +26,15 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(csrf -> csrf.disable())
+        http.csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.POST, "/users/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/users/register").permitAll()
-                        .anyRequest().authenticated()
-                )
+                        .requestMatchers(HttpMethod.POST, "/users/login")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/users/register")
+                        .permitAll()
+                        .anyRequest()
+                        .authenticated())
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
@@ -44,7 +45,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
+            throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 }
