@@ -1,0 +1,101 @@
+version: '3.8'
+services:
+  # MySQL Database
+  bookDb:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    ports:
+      - "3308:3308"
+    expose:
+      - 3308
+    environment:
+      TZ: America/Sao_Paulo
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_USER: docker
+      MYSQL_PASSWORD: admin
+      MYSQL_DATABASE: bookDb
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_TCP_PORT: 3308
+    networks:
+      - devhotel-network
+
+  # Zipkin
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - devhotel-network
+
+  # Eureka Naming Server
+  naming-server:
+    image: matheusmn15/devhotel-naming-server:0.0.1-SNAPSHOT
+#    container_name: eureka-server
+#    environment:
+#      - SPRING_PROFILES_ACTIVE=docker
+    ports:
+      - "8761:8761"
+    networks:
+      - devhotel-network
+
+  # API Gateway
+  api-gateway:
+    image: matheusmn15/devhotel-api-gateway:0.0.1-SNAPSHOT
+    ports:
+      - "8765:8765"
+    environment:
+      SPRING.ZIPKIN.BASE.URL: http://zipkin:9411/
+      EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://naming-server:8761/eureka
+    #    depends_on:
+    #      - eureka-server
+    #      - room-service
+    #      - user-service
+    #      - config-server
+    networks:
+      - devhotel-network
+
+  # Room Service
+  room-service:
+    image: matheusmn15/room-service
+    container_name: room-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/bookDb
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=admin
+    ports:
+      - "8081:8081"
+    networks:
+      - devhotel-network
+    depends_on:
+      - mysql
+      - eureka-server
+      - config-server
+
+  # User Service
+  user-service:
+    image: your-registry/user-service:latest
+    container_name: user-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/bookDb
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=admin
+    ports:
+      - "8082:8082"
+    networks:
+      - devhotel-network
+    depends_on:
+      - mysql
+      - eureka-server
+      - config-server
+
+
+volumes:
+  mysql-data:
+
+networks:
+  devhotel-network:
+    driver: bridge
