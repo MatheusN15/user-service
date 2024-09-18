@@ -32,9 +32,6 @@ services:
   # Eureka Naming Server
   naming-server:
     image: matheusmn15/devhotel-naming-server:0.0.1-SNAPSHOT
-#    container_name: eureka-server
-#    environment:
-#      - SPRING_PROFILES_ACTIVE=docker
     ports:
       - "8761:8761"
     networks:
@@ -48,11 +45,6 @@ services:
     environment:
       SPRING.ZIPKIN.BASE.URL: http://zipkin:9411/
       EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://naming-server:8761/eureka
-    #    depends_on:
-    #      - eureka-server
-    #      - room-service
-    #      - user-service
-    #      - config-server
     networks:
       - devhotel-network
 
@@ -60,14 +52,20 @@ services:
   room-service:
     image: matheusmn15/room-service
     restart: always
-    build: ../../room-service
-    working_dir: ../../room-service
+    build: ./room-service
+    working_dir: /app
     container_name: room-service
     environment:
       TZ: America/Sao_Paulo
-      SPRING.DATASOURCE.URL: jdbc:mysql://bookDb:3308/bookDb?useTimezone=true&serverTimezone=UTC
+      SPRING.ZIPKIN.BASE.URL: http://zipkin:9411/
+      SPRING.DATASOURCE.URL: jdbc:mysql://bookDb:3308/bookDb?useTimezone=true&serverTimezone=UTC&enabledTLSProtocols=TLSv1.2
       SPRING.DATASOURCE.USERNAME: root
       SPRING.DATASOURCE.PASSWORD: admin
+      SPRING.FLYWAY.URL: jdbc:mysql://bookDb:3308/bookDb?useTimezone=true&serverTimezone=UTC&enabledTLSProtocols=TLSv1.2
+      SPRING.FLYWAY.USER: root
+      SPRING.FLYWAY.PASSWORD: admin123
+      EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://naming-server:8761/eureka
+      SPRING.MANAGEMENT.TRACING.SAMPLING.PROBABILITY: 1.0
     ports:
       - "8081:8081"
     command:
@@ -76,27 +74,39 @@ services:
       - devhotel-network
     depends_on:
       - bookDb
-      - eureka-server
-      - config-server
+      - naming-server
+      - api-gateway
+      - zipkin
 
   # User Service
   user-service:
-    image: your-registry/user-service:latest
+    image: matheusmn15/user-service
+    restart: always
+    build: ./user-service
+    working_dir: /app
     container_name: user-service
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/bookDb
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=admin
+      EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://naming-server:8761/eureka
+      SPRING.ZIPKIN.BASE.URL: http://zipkin:9411/
+      TZ: America/Sao_Paulo
+      SPRING.DATASOURCE.URL: jdbc:mysql://bookDb:3308/bookDb?useTimezone=true&serverTimezone=UTC
+      SPRING.DATASOURCE.USERNAME: root
+      SPRING.DATASOURCE.PASSWORD: admin
+      SPRING.FLYWAY.URL: jdbc:mysql://bookDb:3308/bookDb?useTimezone=true&serverTimezone=UTC&enabledTLSProtocols=TLSv1.2
+      SPRING.FLYWAY.USER: root
+      SPRING.FLYWAY.PASSWORD: admin123
+      SPRING.MANAGEMENT.TRACING.SAMPLING.PROBABILITY: 1.0
     ports:
-      - "8082:8082"
+      - "8080:8080"
+    command:
+      - mvn spring-boot:run
     networks:
       - devhotel-network
     depends_on:
       - bookDb
-      - eureka-server
-      - config-server
-
+      - naming-server
+      - api-gateway
+      - zipkin
 
 volumes:
   mysql-data:
